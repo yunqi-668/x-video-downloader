@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#10131b"><meta name="apple-mobile-web-app-capable" content="yes">
+<title>X 视频下载器</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0d111b;color:#f4f6fb;font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;min-height:100vh}
+main{max-width:520px;margin:auto;padding:calc(28px + env(safe-area-inset-top)) 20px calc(30px + env(safe-area-inset-bottom))}
+.logo{width:48px;height:48px;border-radius:16px;background:#fff;color:#111;display:grid;place-items:center;font-size:27px;font-weight:800}
+h1{font-size:27px;margin:18px 0 6px}.sub{color:#a9b2c4;font-size:14px;line-height:1.6}
+.panel{margin-top:25px;background:#171e2c;border:1px solid #293448;border-radius:22px;padding:18px}
+label{display:block;font-size:14px;color:#c4ccda;margin-bottom:10px}
+input,select{width:100%;border:1px solid #39465d;background:#0e1522;color:#fff;border-radius:13px;padding:15px;font-size:15px;outline:none}
+button{width:100%;border:0;border-radius:13px;padding:15px;background:#e8edf5;color:#101522;font-weight:750;font-size:16px;margin-top:12px}
+button:disabled{opacity:.45}.status{min-height:24px;margin-top:14px;color:#bdc8da;font-size:13px;line-height:1.5}
+.result{display:none;margin-top:18px}.thumb{width:100%;border-radius:13px;max-height:230px;object-fit:cover;background:#0a0e15}
+.title{font-weight:650;margin:12px 0}.hint{font-size:12px;color:#98a5ba;line-height:1.6;margin-top:16px}
+footer{color:#77849a;font-size:12px;line-height:1.7;margin:20px 3px}
+a{color:#dce7ff}
+</style></head>
+<body><main>
+<div class="logo">𝕏</div><h1>X 视频下载器</h1>
+<div class="sub">粘贴公开视频链接，解析可用画质并下载 MP4。专为 iPhone Safari 优化。</div>
+<section class="panel">
+<label for="url">X 视频链接</label>
+<input id="url" type="url" placeholder="https://x.com/user/status/..." autocomplete="url">
+<button id="parse">解析视频</button>
+<div class="status" id="status" role="status"></div>
+<div class="result" id="result">
+<img class="thumb" id="thumb" alt="视频预览">
+<div class="title" id="title"></div>
+<label for="quality">下载画质</label>
+<select id="quality"></select>
+<button id="download">下载 MP4</button>
+<div class="hint">iPhone 下载后可在 Safari 下载列表或「文件」App 中打开，再通过分享菜单保存视频。</div>
+</div></section>
+<footer>仅用于下载你有权保存且可公开访问的内容。此工具不会绕过私密账号、登录验证、付费墙或其他访问限制。请尊重创作者版权及平台规则。</footer>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let formats=[];
+$("parse").onclick=async()=>{
+ const url=$("url").value.trim(); $("status").textContent="正在解析…";
+ $("result").style.display="none"; $("parse").disabled=true;
+ try{
+  const r=await fetch("/api/info",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url})});
+  const d=await r.json(); if(!r.ok) throw Error(d.detail||"解析失败");
+  formats=d.formats||[]; if(!formats.length) throw Error("没有找到可用的视频画质");
+  $("title").textContent=d.title||"X 视频";
+  if(d.thumbnail){$("thumb").src=d.thumbnail;$("thumb").style.display="block"}else{$("thumb").style.display="none"}
+  $("quality").innerHTML="";
+  formats.forEach((f,i)=>{const o=document.createElement("option");o.value=f.height;o.textContent=`${f.height}P`;if(i===0)o.selected=true;$("quality").appendChild(o)});
+  $("result").style.display="block";$("status").textContent="解析成功，请选择画质。";
+ }catch(e){$("status").textContent=e.message}
+ finally{$("parse").disabled=false}
+};
+$("download").onclick=()=>{
+ const url=$("url").value.trim(), h=$("quality").value;
+ $("status").textContent="正在准备下载…";
+ const a=document.createElement("a");a.href="/api/download?url="+encodeURIComponent(url)+"&height="+encodeURIComponent(h);a.download="";document.body.appendChild(a);a.click();a.remove();
+ $("status").textContent="下载请求已发送。若 Safari 未自动保存，请检查下载列表。";
+};
+</script></body></html>
